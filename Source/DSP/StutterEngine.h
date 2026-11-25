@@ -17,6 +17,7 @@ struct StutterSettings
     int repeats = 4;
     float fadeMs = 5.0f;
     PlaybackDirection direction = PlaybackDirection::forward;
+    bool patternControlled = false;
 };
 
 class StutterEngine
@@ -51,24 +52,28 @@ public:
             repeatsLeft = 0;
             lastGrid.reset();
         }
-        if (settings.direction != requestedDirection)
-            repeatsLeft = 0;
-        requestedDirection = settings.direction;
+        if (!settings.patternControlled)
+            setDirection(settings.direction);
         division = nextDivision;
         phase = clock.ppqAtBlockStart();
         step = clock.quarterNotesPerSample();
-        running = settings.enabled && clock.isPlaying() && division > 0.0;
-        if (!running)
-        {
-            lastGrid.reset();
-            repeatsLeft = 0;
-        }
+        transportRunning = clock.isPlaying() && division > 0.0;
+        if (!settings.patternControlled)
+            setGate(settings.enabled);
+        else if (!transportRunning)
+            setGate(false);
         const double desired = std::floor(clock.samplesForDivision(settings.denominator, settings.modifier)
             * std::clamp(settings.slice, 0.01f, 1.0f));
         requestedLength = static_cast<int>(std::clamp(desired, 1.0, sampleRate * 16.0));
         requestedRepeats = std::clamp(settings.repeats, 1, 16);
         requestedFade = std::max(1, static_cast<int>(sampleRate * std::clamp(settings.fadeMs, 1.0f, 30.0f) * 0.001));
         activityStep = 1.0f / static_cast<float>(requestedFade);
+    }
+
+    void setPatternGate(bool enabled, PlaybackDirection direction) noexcept
+    {
+        setDirection(direction);
+        setGate(enabled);
     }
 
     // Call before writing the current input frame into history.
@@ -130,6 +135,21 @@ public:
     }
 
 private:
+    void setDirection(PlaybackDirection direction) noexcept
+    {
+        if (direction != requestedDirection) repeatsLeft = 0;
+        requestedDirection = direction;
+    }
+    void setGate(bool enabled) noexcept
+    {
+        running = enabled && transportRunning;
+        if (!running)
+        {
+            lastGrid.reset();
+            repeatsLeft = 0;
+        }
+    }
+    bool transportRunning = false;
     double sampleRate = 44100.0, phase = 0.0, step = 0.0, division = 0.0;
     bool running = false, reversePulse = false;
     int repeatOrdinal = 0;

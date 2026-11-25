@@ -23,6 +23,11 @@ StuddahProcessor::StuddahProcessor()
     reverbDamping = parameters.getRawParameterValue("reverbDamping");
     reverbMix = parameters.getRawParameterValue("reverbMix");
     reverbCurve = parameters.getRawParameterValue("reverbCurve");
+    patternEnabled = parameters.getRawParameterValue("patternEnabled");
+    patternRate = parameters.getRawParameterValue("patternRate");
+    patternLength = parameters.getRawParameterValue("patternLength");
+    for (int i = 0; i < 16; ++i)
+        patternSteps[static_cast<std::size_t>(i)] = parameters.getRawParameterValue("patternStep" + juce::String(i + 1));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayout()
@@ -76,6 +81,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayo
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"reverbCurve", 5}, "Swell Curve",
         juce::NormalisableRange<float>{0.5f, 4.0f, 0.01f}, 2.0f));
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{"patternEnabled", 6}, "Sequencer", false));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{"patternRate", 6}, "Step Rate", juce::StringArray{"1/4", "1/8", "1/16", "1/32"}, 2));
+    layout.add(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID{"patternLength", 6}, "Pattern Steps", 1, 16, 16));
+    constexpr std::array<int, 16> defaultPattern{0, 0, 1, 1, 0, 0, 2, 4, 0, 0, 1, 3, 0, 4, 2, 7};
+    for (int i = 0; i < 16; ++i)
+        layout.add(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"patternStep" + juce::String(i + 1), 6},
+            "Step " + juce::String(i + 1), 0, 7, defaultPattern[static_cast<std::size_t>(i)]));
     return layout;
 }
 
@@ -116,7 +132,16 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     if (tempoClock.hasDiscontinuity())
         history.reset();
 
+    studdah::PatternSettings pattern;
+    pattern.enabled = patternEnabled->load() >= 0.5f;
+    pattern.denominator = 4 << juce::jlimit(0, 3, juce::roundToInt(patternRate->load()));
+    pattern.length = juce::roundToInt(patternLength->load());
+    for (std::size_t i = 0; i < pattern.steps.size(); ++i)
+        pattern.steps[i] = juce::roundToInt(patternSteps[i]->load());
+    sequencer.beginBlock(tempoClock, pattern);
+
     studdah::StutterSettings settings;
+    settings.patternControlled = pattern.enabled;
     settings.enabled = stutterEnabled->load() >= 0.5f;
     settings.denominator = 1 << juce::jlimit(0, 7, juce::roundToInt(stutterRate->load()));
     settings.modifier = static_cast<studdah::NoteModifier>(juce::jlimit(0, 2, juce::roundToInt(stutterModifier->load())));
@@ -127,6 +152,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
     stutter.beginBlock(tempoClock, settings);
     studdah::ReverseReverbSettings reverbSettings;
+    reverbSettings.patternControlled = pattern.enabled;
     reverbSettings.enabled = reverbEnabled->load() >= 0.5f;
     reverbSettings.denominator = 1 << juce::jlimit(0, 4, juce::roundToInt(reverbLength->load()));
     reverbSettings.decaySeconds = reverbDecay->load();
@@ -137,8 +163,16 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     gainStage.beginBlock(inputGain->load(), outputGain->load(), mix->load() * 0.01f);
     const int channels = juce::jmin(2, getTotalNumInputChannels());
     auto* const* data = buffer.getArrayOfWritePointers();
+    int activeStep = -1;
     for (int i = 0; i < buffer.getNumSamples(); ++i)
     {
+        if (pattern.enabled)
+        {
+            const auto current = sequencer.at(i);
+            activeStep = current.index;
+            stutter.setPatternGate(current.stutter(), current.reverse() ? studdah::PlaybackDirection::reverse : studdah::PlaybackDirection::forward);
+            reverseReverb.setPatternGate(current.swell());
+        }
         const studdah::StutterEngine::Frame dry{
             channels > 0 ? data[0][i] : 0.0f,
             channels > 1 ? data[1][i] : 0.0f};
@@ -150,6 +184,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         for (int ch = 0; ch < channels; ++ch)
             data[ch][i] = output[static_cast<std::size_t>(ch)];
     }
+    displayPatternStep.store(activeStep);
 }
 
 juce::AudioProcessorEditor* StuddahProcessor::createEditor()

@@ -16,6 +16,7 @@ struct ReverseReverbSettings
     float damping = 0.45f;
     float mix = 0.35f;
     float curve = 2.0f;
+    bool patternControlled = false;
 };
 
 // A causal reverse swell: create a diffuse forward tail, record it, then
@@ -65,9 +66,12 @@ public:
         division = nextDivision;
         phase = clock.ppqAtBlockStart();
         step = clock.quarterNotesPerSample();
-        running = settings.enabled && clock.isPlaying() && division > 0.0;
-        if (!running) lastGrid.reset();
-        targetAmount = running ? std::clamp(settings.mix, 0.0f, 1.0f) : 0.0f;
+        transportRunning = clock.isPlaying() && division > 0.0;
+        requestedAmount = std::clamp(settings.mix, 0.0f, 1.0f);
+        if (!settings.patternControlled)
+            setPatternGate(settings.enabled);
+        else if (!transportRunning)
+            setPatternGate(false);
         amountStep = 1.0f / static_cast<float>(samplesFromMs(10.0));
         desiredLength = static_cast<int>(std::clamp(
             std::floor(clock.samplesForDivision(settings.denominator)), 1.0,
@@ -78,6 +82,13 @@ public:
         for (int ch = 0; ch < channels; ++ch)
             for (auto& comb : voices[static_cast<std::size_t>(ch)].combs)
                 comb.feedback = static_cast<float>(std::pow(10.0, -3.0 * static_cast<double>(comb.data.size()) / (sampleRate * decay)));
+    }
+
+    void setPatternGate(bool enabled) noexcept
+    {
+        running = enabled && transportRunning;
+        if (!running) lastGrid.reset();
+        targetAmount = running ? requestedAmount : 0.0f;
     }
 
     Frame processFrame(const Frame& input, int offset) noexcept
@@ -166,7 +177,8 @@ private:
     int channels = 1, desiredLength = 1, length = 0, index = 0, fadeLength = 1;
     float damping = 0.45f, curve = 2.0f, requestedCurve = 2.0f;
     float amount = 0.0f, targetAmount = 0.0f, amountStep = 1.0f;
-    bool running = false;
+    bool running = false, transportRunning = false;
+    float requestedAmount = 0.0f;
     CircularAudioBuffer::Position start = 0;
     std::optional<double> lastGrid;
     CircularAudioBuffer history;

@@ -34,6 +34,12 @@ A diffuse stereo reverb records its own wet tail, reverses the previous tempo-gr
 
 Try Stutter off, Reverse Reverb on, Swell Length 1/2, Decay 3 s, Damping 45%, Amount 50%, Curve 2, Mix 100%. Play a vocal loop and listen after the first complete capture. Try combining with reverse stutter. All four CTest targets should pass.
 
+## M07 — Pattern sequencer
+
+Enable Sequencer to switch from manual effect enables and Direction to a repeating 16-step pattern. The 3 clickable lanes are Stutter (forward slice), Reverse (backward slice, takes precedence over Stutter), and Swell (reverse reverb). Empty steps play live audio, subject to short effect fades. Step Rate selects 1/4 through 1/32 and Pattern Steps sets loop length 1–16. The effect Rate and Swell Length remain independent; a lane enables its effect for the step, and capture occurs at the next corresponding effect grid crossing. For immediate aligned effects, use matching divisions. The pattern follows host quarter-note position (including seeks) and all step masks and controls are saved and automatable. The temporary interface includes the editable grid and a live active-step indicator.
+
+Try Sequencer on, Step Rate 1/16, Pattern Steps 16, Rate 1/16, Swell Length 1/16, Amount 50%, Mix 100%. Click cells during playback to customize the default pattern. Disable Sequencer to restore manual controls. All five CTest targets should pass.
+
 ## Windows build
 
 Requires a complete JUCE 7+ source tree, CMake 3.22+, and Visual Studio with Desktop development with C++ (use the generator matching your installed version).
@@ -64,4 +70,4 @@ Copy the entire VST3 bundle to a VST3 folder scanned by FL Studio, then rescan.
 
 ## Roadmap
 
-M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb implemented; M07 sequencer; M08 custom UI.
+M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb implemented; M07 sequencer implemented; M08 custom UI.
