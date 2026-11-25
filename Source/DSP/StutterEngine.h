@@ -6,6 +6,8 @@
 
 namespace studdah
 {
+enum class PlaybackDirection { forward, reverse, alternating };
+
 struct StutterSettings
 {
     bool enabled = false;
@@ -14,6 +16,7 @@ struct StutterSettings
     float slice = 1.0f;
     int repeats = 4;
     float fadeMs = 5.0f;
+    PlaybackDirection direction = PlaybackDirection::forward;
 };
 
 class StutterEngine
@@ -34,6 +37,8 @@ public:
         fade = 1;
         activity = 0.0f;
         lastGrid.reset();
+        repeatOrdinal = 0;
+        reversePulse = false;
     }
 
     void beginBlock(const TempoClock& clock, StutterSettings settings) noexcept
@@ -46,6 +51,9 @@ public:
             repeatsLeft = 0;
             lastGrid.reset();
         }
+        if (settings.direction != requestedDirection)
+            repeatsLeft = 0;
+        requestedDirection = settings.direction;
         division = nextDivision;
         phase = clock.ppqAtBlockStart();
         step = clock.quarterNotesPerSample();
@@ -74,12 +82,23 @@ public:
             if (grid > previous && (!lastGrid || grid != *lastGrid))
             {
                 lastGrid = grid;
-                if (length == 0 || repeatsLeft <= 0 || sliceStart < history.beginPosition())
+                // Reverse reading moves toward older samples while recording continues.
+                // Refresh before the active slice can be overwritten during a reverse pulse.
+                const bool reverseCapable = requestedDirection != PlaybackDirection::forward;
+                const bool expiresDuringPulse = reverseCapable && length > 0
+                    && history.endPosition() - sliceStart + static_cast<CircularAudioBuffer::Position>(length)
+                        > static_cast<CircularAudioBuffer::Position>(history.capacitySamples());
+                if (length == 0 || repeatsLeft <= 0 || sliceStart < history.beginPosition() || expiresDuringPulse)
                 {
-                    length = std::min(requestedLength, history.available());
+                    const int limit = reverseCapable ? history.capacitySamples() / 2 : history.capacitySamples();
+                    length = std::min({requestedLength, history.available(), limit});
                     sliceStart = history.endPosition() - static_cast<CircularAudioBuffer::Position>(length);
                     repeatsLeft = requestedRepeats;
+                    repeatOrdinal = 0;
                 }
+                reversePulse = requestedDirection == PlaybackDirection::reverse
+                    || (requestedDirection == PlaybackDirection::alternating && repeatOrdinal % 2 != 0);
+                ++repeatOrdinal;
                 --repeatsLeft;
                 index = 0;
                 fade = std::max(1, std::min(requestedFade, length / 2));
@@ -88,15 +107,20 @@ public:
 
         activity = std::clamp(activity + (running ? activityStep : -activityStep), 0.0f, 1.0f);
         Frame result = dry;
-        if (index < length && sliceStart + static_cast<CircularAudioBuffer::Position>(index) >= history.beginPosition())
+        if (index < length)
         {
+            const int readIndex = reversePulse ? length - 1 - index : index;
+            const auto position = sliceStart + static_cast<CircularAudioBuffer::Position>(readIndex);
             const auto envelope = std::min({1.0f,
                 static_cast<float>(index) / static_cast<float>(fade),
                 static_cast<float>(length - 1 - index) / static_cast<float>(fade)}) * activity;
             for (int ch = 0; ch < 2; ++ch)
             {
-                const auto past = history.read(ch, sliceStart + static_cast<CircularAudioBuffer::Position>(index));
-                result[static_cast<std::size_t>(ch)] += envelope * (past - dry[static_cast<std::size_t>(ch)]);
+                if (position >= history.beginPosition() && position < history.endPosition())
+                {
+                    const auto past = history.read(ch, position);
+                    result[static_cast<std::size_t>(ch)] += envelope * (past - dry[static_cast<std::size_t>(ch)]);
+                }
             }
             ++index;
         }
@@ -107,7 +131,9 @@ public:
 
 private:
     double sampleRate = 44100.0, phase = 0.0, step = 0.0, division = 0.0;
-    bool running = false;
+    bool running = false, reversePulse = false;
+    int repeatOrdinal = 0;
+    PlaybackDirection requestedDirection = PlaybackDirection::forward;
     int length = 0, index = 0, repeatsLeft = 0, fade = 1;
     int requestedLength = 1, requestedRepeats = 4, requestedFade = 1;
     float activity = 0.0f, activityStep = 1.0f;

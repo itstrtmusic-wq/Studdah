@@ -42,6 +42,7 @@ private:
     std::atomic<float>* stutterSlice = nullptr;
     std::atomic<float>* stutterRepeats = nullptr;
     std::atomic<float>* stutterFade = nullptr;
+    std::atomic<float>* stutterDirection = nullptr;
     std::atomic<float> displayBpm{120.0f};
     std::atomic<int> displayFlags{0};
     std::atomic<float>* fallbackBpm = nullptr;

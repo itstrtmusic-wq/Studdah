@@ -16,6 +16,7 @@ StuddahProcessor::StuddahProcessor()
     stutterSlice = parameters.getRawParameterValue("stutterSlice");
     stutterRepeats = parameters.getRawParameterValue("stutterRepeats");
     stutterFade = parameters.getRawParameterValue("stutterFade");
+    stutterDirection = parameters.getRawParameterValue("stutterDirection");
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayout()
@@ -49,6 +50,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayo
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"stutterFade", 3}, "Edge Fade",
         juce::NormalisableRange<float>{1.0f, 30.0f, 0.1f}, 5.0f, "ms"));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{"stutterDirection", 4}, "Direction",
+        juce::StringArray{"Forward", "Reverse", "Alternating"}, 0));
     return layout;
 }
 
@@ -95,6 +99,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     settings.slice = stutterSlice->load() * 0.01f;
     settings.repeats = juce::roundToInt(stutterRepeats->load());
     settings.fadeMs = stutterFade->load();
+    settings.direction = static_cast<studdah::PlaybackDirection>(juce::jlimit(0, 2, juce::roundToInt(stutterDirection->load())));
 
     stutter.beginBlock(tempoClock, settings);
     gainStage.beginBlock(inputGain->load(), outputGain->load(), mix->load() * 0.01f);
