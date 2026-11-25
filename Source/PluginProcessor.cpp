@@ -34,6 +34,7 @@ bool StuddahProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 
 void StuddahProcessor::prepareToPlay(double sampleRate, int)
 {
+    history.prepare(getTotalNumInputChannels(), juce::jmax(1, juce::roundToInt(sampleRate * 16.0)));
     gainStage.prepare(sampleRate, inputGain->load(), outputGain->load(), mix->load() * 0.01f);
 }
 
@@ -42,6 +43,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     juce::ScopedNoDenormals noDenormals;
     for (int ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear(ch, 0, buffer.getNumSamples());
+    history.push(buffer.getArrayOfReadPointers(), getTotalNumInputChannels(), buffer.getNumSamples());
     gainStage.process(buffer, inputGain->load(), outputGain->load(), mix->load() * 0.01f);
 }
 

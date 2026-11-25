@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DSP/GainStage.h"
+#include "DSP/CircularAudioBuffer.h"
 
 class StuddahProcessor final : public juce::AudioProcessor
 {
@@ -28,6 +29,7 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     studdah::GainStage gainStage;
+    studdah::CircularAudioBuffer history;
     std::atomic<float>* inputGain = nullptr;
     std::atomic<float>* outputGain = nullptr;
     std::atomic<float>* mix = nullptr;
