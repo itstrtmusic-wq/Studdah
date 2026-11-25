@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DSP/GainStage.h"
 #include "DSP/CircularAudioBuffer.h"
+#include "Core/Transport/TempoClock.h"
 
 class StuddahProcessor final : public juce::AudioProcessor
 {
@@ -26,10 +27,16 @@ public:
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
     juce::AudioProcessorValueTreeState parameters;
+    float displayedBpm() const noexcept { return displayBpm.load(); }
+    int displayedTransportFlags() const noexcept { return displayFlags.load(); }
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     studdah::GainStage gainStage;
     studdah::CircularAudioBuffer history;
+    studdah::TempoClock tempoClock;
+    std::atomic<float> displayBpm{120.0f};
+    std::atomic<int> displayFlags{0};
+    std::atomic<float>* fallbackBpm = nullptr;
     std::atomic<float>* inputGain = nullptr;
     std::atomic<float>* outputGain = nullptr;
     std::atomic<float>* mix = nullptr;

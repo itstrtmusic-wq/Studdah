@@ -10,6 +10,12 @@ Mono/stereo audio passthrough, smoothed input/output gain, dry/wet, DAW automati
 
 The plugin records the latest 16 seconds of incoming mono/stereo audio before gain processing. The history supports wraparound, absolute sample positions, forward/reverse copying into preallocated storage, and silence padding before enough samples have arrived. Recording does not allocate memory on the audio thread. The buffer is reset when the host prepares the processor. M02 intentionally leaves audible processing unchanged; playback effects arrive in later milestones.
 
+## M03 — Host transport and tempo
+
+Reads host BPM, PPQ, play state and sample position once per audio block. TempoClock provides straight, dotted and triplet divisions, grid offsets and seek/restart detection. If host tempo or phase is unavailable it uses the adjustable Fallback BPM (default 120) and an internal phase. The temporary editor displays tempo, phase source and playing state. Audio is unchanged until M04.
+
+Test in FL Studio: start playback, change project BPM, seek and stop, and check the displayed tempo and transport state. In standalone with no host tempo, change Fallback BPM and check the display. Both CTest targets should pass.
+
 ## Windows build
 
 Requires a complete JUCE 7+ source tree, CMake 3.22+, and Visual Studio with Desktop development with C++ (use the generator matching your installed version).
@@ -40,4 +46,4 @@ Copy the entire VST3 bundle to a VST3 folder scanned by FL Studio, then rescan.
 
 ## Roadmap
 
-M02 circular buffer implemented; M03 host transport; M04 stutter; M05 reverse; M06 reverse reverb; M07 sequencer; M08 custom UI.
+M02 circular buffer implemented; M03 host transport implemented; M04 stutter; M05 reverse; M06 reverse reverb; M07 sequencer; M08 custom UI.
