@@ -4,7 +4,7 @@ Creative vocal manipulation plugin built with JUCE and CMake.
 
 ## M01 — Plugin foundation
 
-Mono/stereo audio passthrough, smoothed input/output gain, dry/wet, DAW automation and state persistence. The generic JUCE editor is a temporary test interface. The reverse reverb effect is planned for M06.
+Mono/stereo audio passthrough, smoothed input/output gain, dry/wet, DAW automation and state persistence. The generic JUCE editor is a temporary test interface. Reverse reverb is implemented in M06.
 
 ## M02 — Circular audio history
 
@@ -26,7 +26,13 @@ Try a vocal loop at 120 BPM with Stutter on, Rate 1/16, Straight, 4 repeats, 100
 
 Direction is an automatable choice: Forward (default), Reverse, or Alternating (forward then reverse, starting forward with each new capture). Enable Stutter to use any of these modes. Direction changes take effect at the next grid crossing; the current pulse keeps its direction. Set Repeats to 1 for a continuously refreshed reverse effect. Reverse-capable captures are limited to half the history capacity to avoid reading overwritten samples during playback; older captures are refreshed before expiration. This is causal live reversal of past audio, not lookahead or reverse reverb.
 
-Try Rate 1/4, Straight, Slice Length 100%, Repeats 2, Edge Fade 5 ms, Mix 100%, Direction Alternating. Listen for forward and backward phrases. Reverse reverb comes next.
+Try Rate 1/4, Straight, Slice Length 100%, Repeats 2, Edge Fade 5 ms, Mix 100%, Direction Alternating. Listen for forward and backward phrases. The M06 reverse reverb can also be used independently.
+
+## M06 — Reverse reverb swell
+
+A diffuse stereo reverb records its own wet tail, reverses the previous tempo-grid slice, and applies a rising envelope with a short end fade. Swell Length selects 1/1 to 1/16; Reverb Decay adjusts feedback decay (0.2–8 seconds); Reverb Damping darkens the tail; Swell Curve shapes the buildup; Swell Amount adds the wet swell in parallel. Enable Reverse Reverb independently of Stutter or combine them. The reverb processes the stutter output; global Mix blends the whole effected path with original input. At extreme tempos the capture is capped at four seconds; a seek or restart clears the reverb history. This is a causal reverse-tail effect using past audio, not future-aware pre-vocal reverb. It adds no mandatory dry-path latency. Leave headroom because the parallel wet path can increase peaks.
+
+Try Stutter off, Reverse Reverb on, Swell Length 1/2, Decay 3 s, Damping 45%, Amount 50%, Curve 2, Mix 100%. Play a vocal loop and listen after the first complete capture. Try combining with reverse stutter. All four CTest targets should pass.
 
 ## Windows build
 
@@ -58,4 +64,4 @@ Copy the entire VST3 bundle to a VST3 folder scanned by FL Studio, then rescan.
 
 ## Roadmap
 
-M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb; M07 sequencer; M08 custom UI.
+M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb implemented; M07 sequencer; M08 custom UI.

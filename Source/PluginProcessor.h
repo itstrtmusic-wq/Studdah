@@ -3,6 +3,7 @@
 #include "DSP/GainStage.h"
 #include "DSP/CircularAudioBuffer.h"
 #include "DSP/StutterEngine.h"
+#include "DSP/ReverseReverb.h"
 #include "Core/Transport/TempoClock.h"
 
 class StuddahProcessor final : public juce::AudioProcessor
@@ -19,7 +20,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return 16.0; }
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
     void setCurrentProgram(int) override {}
@@ -36,6 +37,13 @@ private:
     studdah::CircularAudioBuffer history;
     studdah::TempoClock tempoClock;
     studdah::StutterEngine stutter;
+    studdah::ReverseReverb reverseReverb;
+    std::atomic<float>* reverbEnabled = nullptr;
+    std::atomic<float>* reverbLength = nullptr;
+    std::atomic<float>* reverbDecay = nullptr;
+    std::atomic<float>* reverbDamping = nullptr;
+    std::atomic<float>* reverbMix = nullptr;
+    std::atomic<float>* reverbCurve = nullptr;
     std::atomic<float>* stutterEnabled = nullptr;
     std::atomic<float>* stutterRate = nullptr;
     std::atomic<float>* stutterModifier = nullptr;

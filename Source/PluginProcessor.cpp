@@ -17,6 +17,12 @@ StuddahProcessor::StuddahProcessor()
     stutterRepeats = parameters.getRawParameterValue("stutterRepeats");
     stutterFade = parameters.getRawParameterValue("stutterFade");
     stutterDirection = parameters.getRawParameterValue("stutterDirection");
+    reverbEnabled = parameters.getRawParameterValue("reverbEnabled");
+    reverbLength = parameters.getRawParameterValue("reverbLength");
+    reverbDecay = parameters.getRawParameterValue("reverbDecay");
+    reverbDamping = parameters.getRawParameterValue("reverbDamping");
+    reverbMix = parameters.getRawParameterValue("reverbMix");
+    reverbCurve = parameters.getRawParameterValue("reverbCurve");
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayout()
@@ -53,6 +59,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout StuddahProcessor::createLayo
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{"stutterDirection", 4}, "Direction",
         juce::StringArray{"Forward", "Reverse", "Alternating"}, 0));
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{"reverbEnabled", 5}, "Reverse Reverb", false));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{"reverbLength", 5}, "Swell Length",
+        juce::StringArray{"1/1", "1/2", "1/4", "1/8", "1/16"}, 2));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"reverbDecay", 5}, "Reverb Decay",
+        juce::NormalisableRange<float>{0.2f, 8.0f, 0.01f, 0.5f}, 2.5f, "s"));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"reverbDamping", 5}, "Reverb Damping",
+        juce::NormalisableRange<float>{0.0f, 95.0f, 1.0f}, 45.0f, "%"));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"reverbMix", 5}, "Swell Amount",
+        juce::NormalisableRange<float>{0.0f, 100.0f, 1.0f}, 35.0f, "%"));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"reverbCurve", 5}, "Swell Curve",
+        juce::NormalisableRange<float>{0.5f, 4.0f, 0.01f}, 2.0f));
     return layout;
 }
 
@@ -67,6 +90,7 @@ void StuddahProcessor::prepareToPlay(double sampleRate, int)
 {
     tempoClock.prepare(sampleRate);
     stutter.prepare(sampleRate);
+    reverseReverb.prepare(sampleRate, getTotalNumInputChannels());
     history.prepare(getTotalNumInputChannels(), juce::jmax(1, juce::roundToInt(sampleRate * 16.0)));
     gainStage.prepare(sampleRate, inputGain->load(), outputGain->load(), mix->load() * 0.01f);
 }
@@ -102,6 +126,14 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
     settings.direction = static_cast<studdah::PlaybackDirection>(juce::jlimit(0, 2, juce::roundToInt(stutterDirection->load())));
 
     stutter.beginBlock(tempoClock, settings);
+    studdah::ReverseReverbSettings reverbSettings;
+    reverbSettings.enabled = reverbEnabled->load() >= 0.5f;
+    reverbSettings.denominator = 1 << juce::jlimit(0, 4, juce::roundToInt(reverbLength->load()));
+    reverbSettings.decaySeconds = reverbDecay->load();
+    reverbSettings.damping = reverbDamping->load() * 0.01f;
+    reverbSettings.mix = reverbMix->load() * 0.01f;
+    reverbSettings.curve = reverbCurve->load();
+    reverseReverb.beginBlock(tempoClock, reverbSettings);
     gainStage.beginBlock(inputGain->load(), outputGain->load(), mix->load() * 0.01f);
     const int channels = juce::jmin(2, getTotalNumInputChannels());
     auto* const* data = buffer.getArrayOfWritePointers();
@@ -110,7 +142,8 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         const studdah::StutterEngine::Frame dry{
             channels > 0 ? data[0][i] : 0.0f,
             channels > 1 ? data[1][i] : 0.0f};
-        const auto effected = stutter.processFrame(history, dry, i);
+        const auto chopped = stutter.processFrame(history, dry, i);
+        const auto effected = reverseReverb.processFrame(chopped, i);
         const float* source[]{ &dry[0], &dry[1] };
         history.push(source, channels, 1);
         const auto output = gainStage.processFrame(dry, effected);
