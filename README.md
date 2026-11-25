@@ -4,7 +4,7 @@ Creative vocal manipulation plugin built with JUCE and CMake.
 
 ## M01 — Plugin foundation
 
-Mono/stereo audio passthrough, smoothed input/output gain, dry/wet, DAW automation and state persistence. The generic JUCE editor is a temporary test interface. Stutter and reverse effects are not implemented yet.
+Mono/stereo audio passthrough, smoothed input/output gain, dry/wet, DAW automation and state persistence. The generic JUCE editor is a temporary test interface. Reverse effects are planned for later milestones.
 
 ## M02 — Circular audio history
 
@@ -14,7 +14,13 @@ The plugin records the latest 16 seconds of incoming mono/stereo audio before ga
 
 Reads host BPM, PPQ, play state and sample position once per audio block. TempoClock provides straight, dotted and triplet divisions, grid offsets and seek/restart detection. If host tempo or phase is unavailable it uses the adjustable Fallback BPM (default 120) and an internal phase. The temporary editor displays tempo, phase source and playing state. Audio is unchanged until M04.
 
-Test in FL Studio: start playback, change project BPM, seek and stop, and check the displayed tempo and transport state. In standalone with no host tempo, change Fallback BPM and check the display. Both CTest targets should pass.
+Test in FL Studio: start playback, change project BPM, seek and stop, and check the displayed tempo and transport state. In standalone with no host tempo, change Fallback BPM and check the display. All CTest targets should pass.
+
+## M04 — Stutter playback
+
+Enable Stutter during playback to capture the preceding slice at the next musical grid boundary. The slice repeats for the selected number of steps before a fresh capture. Rate selects 1/1 through 1/128, Rhythm selects straight/dotted/triplet, and Slice Length controls the proportion of each step played from history. Short slices return to live audio for the remainder of the step. Edge Fade crossfades between live and captured audio (1–30 ms, bounded by slice length). Mix blends the dry input and the effected path. Stutter is disabled by default. A seek or transport restart clears the history and playback phase. Extremely long captures are limited to the available history; repeats are refreshed if history expires.
+
+Try a vocal loop at 120 BPM with Stutter on, Rate 1/16, Straight, 4 repeats, 100% slice, 5 ms edge fade, Mix 100%. Change controls and confirm dry passthrough when stutter is off. Test stop/start and mono/stereo. The generic editor is temporary; abrupt host seeks or rate changes may interrupt a slice.
 
 ## Windows build
 
@@ -46,4 +52,4 @@ Copy the entire VST3 bundle to a VST3 folder scanned by FL Studio, then rescan.
 
 ## Roadmap
 
-M02 circular buffer implemented; M03 host transport implemented; M04 stutter; M05 reverse; M06 reverse reverb; M07 sequencer; M08 custom UI.
+M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse; M06 reverse reverb; M07 sequencer; M08 custom UI.

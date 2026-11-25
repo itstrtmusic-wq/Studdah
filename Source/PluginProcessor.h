@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DSP/GainStage.h"
 #include "DSP/CircularAudioBuffer.h"
+#include "DSP/StutterEngine.h"
 #include "Core/Transport/TempoClock.h"
 
 class StuddahProcessor final : public juce::AudioProcessor
@@ -34,6 +35,13 @@ private:
     studdah::GainStage gainStage;
     studdah::CircularAudioBuffer history;
     studdah::TempoClock tempoClock;
+    studdah::StutterEngine stutter;
+    std::atomic<float>* stutterEnabled = nullptr;
+    std::atomic<float>* stutterRate = nullptr;
+    std::atomic<float>* stutterModifier = nullptr;
+    std::atomic<float>* stutterSlice = nullptr;
+    std::atomic<float>* stutterRepeats = nullptr;
+    std::atomic<float>* stutterFade = nullptr;
     std::atomic<float> displayBpm{120.0f};
     std::atomic<int> displayFlags{0};
     std::atomic<float>* fallbackBpm = nullptr;
