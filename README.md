@@ -40,6 +40,10 @@ Enable Sequencer to switch from manual effect enables and Direction to a repeati
 
 Try Sequencer on, Step Rate 1/16, Pattern Steps 16, Rate 1/16, Swell Length 1/16, Amount 50%, Mix 100%. Click cells during playback to customize the default pattern. Disable Sequencer to restore manual controls. All five CTest targets should pass.
 
+## M08 — Chrome interface
+
+The native JUCE editor uses a brushed-metal theme with red accents, custom rotary controls, an editable 16-step grid, the existing host tempo display, and a rolling input waveform. The waveform uses atomically published min/max bins (approximately 2.56 seconds of input) rather than sharing the mutable DSP history. All existing parameters and step masks retain their IDs and automation attachments. The waveform is a live input view, not a slice-position editor. Preset browsing and performance macros are planned for M09.
+
 ## Windows build
 
 Requires a complete JUCE 7+ source tree, CMake 3.22+, and Visual Studio with Desktop development with C++ (use the generator matching your installed version).
@@ -70,4 +74,4 @@ Copy the entire VST3 bundle to a VST3 folder scanned by FL Studio, then rescan.
 
 ## Roadmap
 
-M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb implemented; M07 sequencer implemented; M08 custom UI.
+M02 circular buffer implemented; M03 host transport implemented; M04 stutter implemented; M05 reverse implemented; M06 reverse reverb implemented; M07 sequencer implemented; M08 Chrome UI implemented; M09 presets and macros.

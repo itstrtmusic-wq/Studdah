@@ -1,5 +1,5 @@
 #include "PluginProcessor.h"
-#include "UI/TransportTestEditor.h"
+#include "UI/StuddahEditor.h"
 
 StuddahProcessor::StuddahProcessor()
     : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
@@ -105,6 +105,7 @@ bool StuddahProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 void StuddahProcessor::prepareToPlay(double sampleRate, int)
 {
     tempoClock.prepare(sampleRate);
+    waveform.prepare(sampleRate);
     stutter.prepare(sampleRate);
     reverseReverb.prepare(sampleRate, getTotalNumInputChannels());
     history.prepare(getTotalNumInputChannels(), juce::jmax(1, juce::roundToInt(sampleRate * 16.0)));
@@ -176,6 +177,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
         const studdah::StutterEngine::Frame dry{
             channels > 0 ? data[0][i] : 0.0f,
             channels > 1 ? data[1][i] : 0.0f};
+        waveform.push(dry[0], dry[1]);
         const auto chopped = stutter.processFrame(history, dry, i);
         const auto effected = reverseReverb.processFrame(chopped, i);
         const float* source[]{ &dry[0], &dry[1] };
@@ -189,7 +191,7 @@ void StuddahProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Midi
 
 juce::AudioProcessorEditor* StuddahProcessor::createEditor()
 {
-    return new TransportTestEditor(*this);
+    return new StuddahEditor(*this);
 }
 
 void StuddahProcessor::getStateInformation(juce::MemoryBlock& destination)

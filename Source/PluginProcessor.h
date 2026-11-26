@@ -6,6 +6,7 @@
 #include "DSP/ReverseReverb.h"
 #include "Core/Transport/TempoClock.h"
 #include "Core/Transport/PatternSequencer.h"
+#include "UI/WaveformHistory.h"
 
 class StuddahProcessor final : public juce::AudioProcessor
 {
@@ -33,6 +34,7 @@ public:
     float displayedBpm() const noexcept { return displayBpm.load(); }
     int displayedTransportFlags() const noexcept { return displayFlags.load(); }
     int displayedPatternStep() const noexcept { return displayPatternStep.load(); }
+    studdah::WaveformHistory::Snapshot waveformSnapshot() const noexcept { return waveform.snapshot(); }
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     studdah::GainStage gainStage;
@@ -41,6 +43,7 @@ private:
     studdah::StutterEngine stutter;
     studdah::ReverseReverb reverseReverb;
     studdah::PatternSequencer sequencer;
+    studdah::WaveformHistory waveform;
     std::atomic<int> displayPatternStep{-1};
     std::atomic<float>* patternEnabled = nullptr;
     std::atomic<float>* patternRate = nullptr;
